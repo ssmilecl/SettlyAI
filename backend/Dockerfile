@@ -9,7 +9,7 @@ COPY AnotherLib/AnotherLib.csproj ./AnotherLib/
 # Restore
 RUN dotnet restore SettlyApi/SettlyApi.csproj
 
-# 复制所有源码
+
 COPY . .
 
 # Publish
