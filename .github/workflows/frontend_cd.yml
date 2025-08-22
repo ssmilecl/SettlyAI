@@ -1,4 +1,4 @@
-name: CD
+name: Fronten_CD Deploy
 on:
     push:
         branches: [ main ]
@@ -27,16 +27,16 @@ jobs:
             - name: Build
               run: pnpm build
               working-directory: frontend
-            - name: Configure AWS (OIDC + AssumeRole)
+            - name: Configure AWS (OIDC + AssumeRole) #OpenID Connect
               if: ${{ env.S3_BUCKET != ''}}
-              uses: aws-actions/configure-aws-credentials@v4
+              uses: aws-actions/configure-aws-credentials@v4 #GitHub log in AWS
               with:
-                role-to-assume: ${{ secrets.AWS_ROLE_ARN }} 
+                role-to-assume: ${{ secrets.AWS_ROLE_ARN }} #AWS IAM Role ARN
                 aws-region: ${{ env.AWS_REGION }} 
                 role-session-name: frontend-deploy
-            - name: Sync to S3
+            - name: Sync to S3 #upload to S3
               run: aws s3 sync "dist" "s3://${S3_BUCKET}/" --delete --exact-timestamps --only-show-errors --metadata-directive REPLACE --cache-control "max-age=300""
-            - name: Invalidate CloudFront
+            - name: Invalidate CloudFront #Clear Cache
               if: ${{ env.CLOUDFRONT_DISTRIBUTION_ID != ''}}
               run: |
                 aws cloudfront create-invalidation \
