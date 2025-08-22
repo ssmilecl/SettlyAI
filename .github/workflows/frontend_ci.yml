@@ -28,7 +28,8 @@ jobs:
           standalone: true
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        working-directory: ./frontend
+        run: pnpm install 
 
       - name: Build frontend
         working-directory: ./frontend
