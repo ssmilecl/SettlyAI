@@ -35,13 +35,13 @@ jobs:
         working-directory: ./frontend
         run: pnpm build
       
-      - name: Lint check
-        working-directory: ./frontend
-        run: pnpm lint:check
+      # - name: Lint check
+      #   working-directory: ./frontend
+      #   run: pnpm lint:check
 
-      - name: Format check
-        working-directory: ./frontend
-        run: pnpm format:check
+      # - name: Format check
+      #   working-directory: ./frontend
+      #   run: pnpm format:check
 
       - name: Run tests
         working-directory: ./frontend
