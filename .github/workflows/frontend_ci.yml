@@ -1,0 +1,46 @@
+name: Frontend CI Build and Test
+
+on:
+  push:
+    branches: [main]
+  # pull_request:
+  #   branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9 
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend
+        working-directory: ./frontend
+        run: pnpm build
+      
+      - name: Lint check
+        working-directory: ./frontend
+        run: pnpm lint:check
+
+      - name: Format check
+        working-directory: ./frontend
+        run: pnpm format:check
+
+      - name: Run tests
+        working-directory: ./frontend
+        run: pnpm test
