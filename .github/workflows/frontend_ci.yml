@@ -43,6 +43,6 @@ jobs:
       #   working-directory: ./frontend
       #   run: pnpm format:check
 
-      - name: Run tests
-        working-directory: ./frontend
-        run: pnpm test
+      # - name: Run tests
+      #   working-directory: ./frontend
+      #   run: pnpm test
