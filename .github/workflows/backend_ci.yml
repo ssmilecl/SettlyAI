@@ -35,8 +35,9 @@ jobs:
       - name: Install dotnet-ef
         run: dotnet tool install --global dotnet-ef
 
-    #   - name: Restore
-    #     run: dotnet restore backend.sln
+      - name: Restore
+        run: dotnet restore backend.sln
+        working-directory: ./backend
 
       - name: Build backend
         run: dotnet build backend.sln --no-restore --configuration Release
