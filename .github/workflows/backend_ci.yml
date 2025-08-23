@@ -1,0 +1,48 @@
+name: Backend build-and-test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+
+
+    services:
+      postgres:
+        image: postgres:15
+        ports: ['5432:5432']
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: testdb
+        options: >-
+          --health-cmd "pg_isready -U test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install dotnet-ef
+        run: dotnet tool install --global dotnet-ef
+
+      - name: Restore
+        run: dotnet restore backend.sln
+
+      - name: Build backend
+        run: dotnet build backend.sln --no-restore --configuration Release
+        working-directory: ./backend
+
+      - name: Test
+        run: dotnet test backend.sln --no-build --configuration Release --logger trx
+        env:
+          DATABASE_URL: postgres://test:test@localhost:5432/testdb
