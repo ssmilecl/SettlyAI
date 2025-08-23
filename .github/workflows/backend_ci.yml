@@ -45,5 +45,6 @@ jobs:
 
       - name: Test
         run: dotnet test backend.sln --no-build --configuration Release --logger trx
+        working-directory: ./backend
         env:
           DATABASE_URL: postgres://test:test@localhost:5432/testdb
