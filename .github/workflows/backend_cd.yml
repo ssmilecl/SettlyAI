@@ -1,7 +1,7 @@
 name: Backend Deploy
 
 on:
-  workflow_dispatch: {} # allows manual trigger
+  #workflow_dispatch: {} # allows manual trigger
   push:
     branches: [main]
     paths:
@@ -55,7 +55,7 @@ jobs:
           docker tag backend:latest ${{ secrets.ECR_REGISTRY }}:latest
           aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
           docker push ${{ secrets.ECR_REGISTRY }}:latest
-          
+
       # ===== Find EC2 instance by Name tag =====
       - name: Find EC2 instance
         id: ec2
