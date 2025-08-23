@@ -4,9 +4,9 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'backend/**'
-      
+   #paths:
+      #- 'backend/**'
+
 concurrency:
   group: backend-prod
   cancel-in-progress: false
