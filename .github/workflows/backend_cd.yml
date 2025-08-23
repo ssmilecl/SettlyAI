@@ -1,0 +1,107 @@
+name: Backend Deploy
+
+on:
+  workflow_dispatch: {} # allows manual trigger
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+concurrency:
+  group: backend-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write  # for OIDC authentication to AWS
+
+env:
+  AWS_REGION: ap-southeast-2
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    #environment: production
+
+    steps:
+      # Checkout repo
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Setup .NET
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+    # 3. Setup Docker CLI
+      - name: Setup Docker
+        uses: docker/setup-buildx-action@v2
+
+      # ===== Configure AWS credentials via OIDC =====
+      - name: Configure AWS (OIDC) #setup AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+         aws-region: ${{ env.AWS_REGION }}
+
+    # 5. Build Docker image
+      - name: Build Docker image
+        run: |
+          docker build -t backend:latest ./backend
+
+     # 6. Tag & push to ECR
+      - name: Push Docker image to ECR
+        run: |
+          docker tag backend:latest ${{ secrets.ECR_REGISTRY }}:latest
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
+          docker push ${{ secrets.ECR_REGISTRY }}:latest
+          
+      # ===== Find EC2 instance by Name tag =====
+      - name: Find EC2 instance
+        id: ec2
+        run: |
+          echo "Looking for EC2 tagged Name=${{ secrets.AWS_EC2_NAME }}..."
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=${{ secrets.AWS_EC2_NAME }}" "Name=instance-state-name,Values=running" \
+            --query "Reservations[].Instances[0].InstanceId" \
+            --region $AWS_REGION \
+            --output text)
+          echo "Found EC2 instance ID: $INSTANCE_ID"
+          echo "INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV
+
+      # ===== Wait until EC2 is registered with SSM =====
+      - name: Wait for SSM registration
+        run: |
+          echo "Waiting for EC2 to register with SSM..."
+          for i in {1..10}; do
+            MATCHED=$(aws ssm describe-instance-information \
+              --region $AWS_REGION \
+              --query "InstanceInformationList[?InstanceId=='$INSTANCE_ID']" \
+              --output text)
+            if [ -n "$MATCHED" ]; then
+              echo "✅ EC2 instance registered with SSM!"
+              break
+            fi
+            echo "⏳ Not yet registered... retry in 5 seconds"
+            sleep 5
+          done
+          if [ -z "$MATCHED" ]; then
+            echo "❌ EC2 instance did not register with SSM in time."
+            exit 1
+          fi
+
+      # ===== Deploy Docker container from ECR =====
+      - name: Deploy backend container via SSM
+        run: |
+          aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --region $AWS_REGION \
+            --instance-ids "$INSTANCE_ID" \
+            --comment "Deploy backend container" \
+            --parameters 'commands=[
+              "aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin '${{ secrets.ECR_REGISTRY }}'",
+              "docker pull '${{ secrets.ECR_REGISTRY }}:latest'",
+              "docker stop backend || true",
+              "docker rm backend || true",
+              "docker run -d --name backend -p 5100:5100 -e ASPNETCORE_ENVIRONMENT=Production '${{ secrets.ECR_REGISTRY }}:latest'"
+            ]'
